@@ -19,6 +19,10 @@ Wants=network-online.target
 Type=simple
 User=twitcher
 Group=audio
+# USB mic capture gain: resets on reboot, so set it before every start. Assumes the
+# Uses the card *name* (not number) so USB re-enumeration cannot break it;
+# the leading "+" runs it as root regardless of User=.
+ExecStartPre=+/usr/bin/amixer -c Device sset Mic 100%
 ExecStart=/usr/local/bin/twitcher -config /etc/twitcher/twitcher.yaml
 Environment=TWITCHER_DB=/var/lib/twitcher/twitcher.db
 Restart=always
