@@ -1,0 +1,44 @@
+# twitcher — headless BirdNET detection service
+#
+# Install:
+#   sudo cp twitcher /usr/local/bin/
+#   sudo mkdir -p /etc/twitcher /var/lib/twitcher
+#   sudo cp twitcher.yaml /etc/twitcher/ && edit device/lat/lon
+#   sudo cp deploy/twitcher.service /etc/systemd/system/
+#   sudo systemctl enable --now twitcher
+#
+# Logs: journalctl -u twitcher -f
+
+[Unit]
+Description=twitcher bird detection service
+Documentation=https://github.com/kivlor/twitcher
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=twitcher
+Group=audio
+ExecStart=/usr/local/bin/twitcher -config /etc/twitcher/twitcher.yaml
+Environment=TWITCHER_DB=/var/lib/twitcher/twitcher.db
+Restart=always
+RestartSec=5
+# Clean shutdown: flush queues, close DB, free the model (F8).
+KillSignal=SIGTERM
+TimeoutStopSec=30
+# Memory guardrails for the Pi 3B (N1): GOGC/authtokens trimmed to keep the
+# Go heap under control; GOMEMLIMIT is a soft cap, the runtime GCs harder as
+# it approaches.
+Environment=GOMEMLIMIT=350MiB
+Environment=GOGC=50
+# Audio scheduling: keep inference from starving the capture callback.
+Nice=-5
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/twitcher
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

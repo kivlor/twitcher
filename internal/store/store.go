@@ -132,3 +132,38 @@ func (s *Store) Count() (int64, error) {
 	}
 	return n, nil
 }
+
+// DeleteOlderThan removes notes (and their results, via the FK cascade)
+// whose BeginTime is before the given cutoff, returning the number of
+// notes removed. Used by the retention sweep to bound DB growth (§N3).
+func (s *Store) DeleteOlderThan(cutoff time.Time) (int64, error) {
+	res := s.db.Where("begin_time < ?", cutoff).Delete(&Note{})
+	if res.Error != nil {
+		return 0, fmt.Errorf("store: delete older than %s: %w", cutoff, res.Error)
+	}
+	return res.RowsAffected, nil
+}
+
+// DeleteWithMissingClip removes notes whose ClipName no longer exists on
+// disk (their clips were pruned by the retention sweep). clipRoot is the
+// directory clip names are relative to; a nil checker keeps all notes.
+func (s *Store) DeleteWithMissingClip(exists func(clipName string) bool) (int64, error) {
+	var names []string
+	if err := s.db.Model(&Note{}).Where("clip_name != ''").Pluck("clip_name", &names).Error; err != nil {
+		return 0, fmt.Errorf("store: pluck clip names: %w", err)
+	}
+	var removed int64
+	for _, name := range names {
+		if !exists(name) {
+			res := s.db.Where("clip_name = ?", name).Delete(&Note{})
+			if res.Error != nil {
+				return removed, fmt.Errorf("store: delete note with clip %s: %w", name, res.Error)
+			}
+			removed += res.RowsAffected
+		}
+	}
+	return removed, nil
+}
+
+// DB exposes the underlying *gorm.DB for read-side tooling and tests.
+func (s *Store) DB() *gorm.DB { return s.db }

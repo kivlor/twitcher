@@ -1,9 +1,22 @@
 package store
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 )
+
+const dateFormat = "2006-01-02"
+
+func newTestStore(t *testing.T) *Store {
+	t.Helper()
+	st, err := Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+	return st
+}
 
 func TestSaveAndReadBack(t *testing.T) {
 	path := t.TempDir() + "/test.db"
@@ -101,5 +114,83 @@ func TestSaveAndReadBack(t *testing.T) {
 		if !seen[c] {
 			t.Errorf("missing notes column %q", c)
 		}
+	}
+}
+
+func TestDeleteOlderThan(t *testing.T) {
+	st := newTestStore(t)
+	old := time.Now().Add(-48 * time.Hour)
+	for i, clip := range []string{"", "a.wav"} {
+		note := &Note{
+			Date:           old.Add(time.Duration(i) * time.Hour).Format(dateFormat),
+			Time:           "00:00:00",
+			BeginTime:      old.Add(time.Duration(i) * time.Hour),
+			EndTime:        old.Add(time.Duration(i) * time.Hour).Add(3 * time.Second),
+			ScientificName: "Strix aluco", CommonName: "Tawny Owl",
+			Confidence: 0.9, ClipName: clip,
+		}
+		if err := st.Save(note, []*Result{{Species: "Strix aluco", Confidence: 0.9}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fresh := &Note{
+		Date: time.Now().Format(dateFormat), Time: "00:00:00",
+		BeginTime: time.Now(), EndTime: time.Now().Add(3 * time.Second),
+		ScientificName: "Strix aluco", CommonName: "Tawny Owl", Confidence: 0.9,
+	}
+	if err := st.Save(fresh, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	removed, err := st.DeleteOlderThan(time.Now().Add(-24 * time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if removed != 2 {
+		t.Errorf("removed = %d, want 2", removed)
+	}
+	// Results rows must cascade with their notes.
+	var results int64
+	st.db.Model(&Result{}).Count(&results)
+	if results != 0 {
+		t.Errorf("orphaned results: %d", results)
+	}
+	n, _ := st.Count()
+	if n != 1 {
+		t.Errorf("remaining notes = %d, want 1", n)
+	}
+}
+
+func TestDeleteWithMissingClip(t *testing.T) {
+	st := newTestStore(t)
+	mk := func(clip string, begin time.Time) *Note {
+		return &Note{
+			Date: begin.Format(dateFormat), Time: "00:00:00",
+			BeginTime: begin, EndTime: begin.Add(3 * time.Second),
+			ScientificName: "S", CommonName: "C", Confidence: 0.9, ClipName: clip,
+		}
+	}
+	now := time.Now()
+	if err := st.Save(mk("kept.wav", now), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Save(mk("gone.wav", now), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Save(mk("", now), nil); err != nil {
+		t.Fatal(err) // no clip: must never be pruned by clip existence
+	}
+
+	exists := map[string]bool{"kept.wav": true}
+	removed, err := st.DeleteWithMissingClip(func(name string) bool { return exists[name] })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if removed != 1 {
+		t.Errorf("removed = %d, want 1", removed)
+	}
+	n, _ := st.Count()
+	if n != 2 {
+		t.Errorf("remaining = %d, want 2 (kept.wav + no-clip note)", n)
 	}
 }

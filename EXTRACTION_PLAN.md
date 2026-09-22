@@ -242,8 +242,19 @@ outside inference.
    schema/column names match BirdNET-Go exactly; WAL confirmed via external read-only conn.
    `cmd/m1` + `cmd/m2` consolidated into one `cmd/twitcher` binary (-wav = offline mode;
    -db default twitcher.db, -lat/-lon/-sensitivity/-node recorded on each note).
-4. **M4 — Harden:** queue-drop, device reconnect backoff, retention sweep, systemd unit,
-   SIGHUP re-read config, clip recording, MQTT/Kafka event emitter (F7).
+4. **M4 — Harden:** ✅ **DONE.** YAML config with defaults→file→env→flags layering
+   (`internal/config`, `twitcher.example.yaml`); capture supervisor retries device init with
+   exponential backoff (1 s→60 s); detection clips saved as 48 kHz mono WAV + JSON sidecar
+   under `clips/YYYY/MM/DD/` with hourly retention sweep (`internal/clips`); MQTT JSON event
+   emitter with birth/LWT status on `birdnet/status`, bounded drop-oldest queue, and a
+   disconnect timeout so Close never hangs (`internal/events`); note retention
+   (`DeleteOlderThan`) and clip-existence pruning (`DeleteWithMissingClip`) in `internal/store`;
+   systemd unit `deploy/twitcher.service` (Restart=always, GOMEMLIMIT, hardening). Kafka
+   deferred until there is a consumer. Verified live on host: 30 s mic run (ALC1220) →
+   3 detections persisted with 3 s clips, zero dropped chunks/frames, clean SIGTERM-free
+   shutdown; MQTT verified against an eclipse-mosquitto broker: birth `online`, 6 detection
+   events with top-3 results, clean `offline`. SIGHUP re-read was skipped — flags + env +
+   systemd restart cover the same need with less state.
 5. **M5 — Pi deployment:** swap/zram docs, boot-time startup, memory soak test for 24 h.
 
 ### 5.5 Verification

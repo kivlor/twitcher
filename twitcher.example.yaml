@@ -1,0 +1,46 @@
+# twitcher configuration — copy to /etc/twitcher/twitcher.yaml
+# Every field is optional; this file shows the defaults plus the settings
+# you most likely want to change. Command-line flags override this file,
+# and TWITCHER_DB / TWITCHER_DEVICE / TWITCHER_MQTT_BROKER override both.
+
+# Classifier
+model: model.tflite
+labels: labels.txt
+threads: 2
+
+# Persistence (SQLite, BirdNET-Go-compatible notes/results schema).
+# The DB directory must be writable by the service user.
+db: twitcher.db
+
+# Audio
+device: default          # "default", an ALSA device name, or an ID substring (see -list-devices)
+overlap: 0.33
+threshold: 0.80
+
+# Location + provenance recorded on every detection.
+latitude: 0
+longitude: 0
+sensitivity: 1.0
+node: ""                # empty = hostname
+
+# Audio clips (F4): save the 3 s detection window as WAV under clips/YYYY/MM/DD/.
+clips:
+  enabled: false
+  dir: clips
+  retention_days: 30     # clips older than N days are deleted (0 = keep forever);
+                         # their notes are pruned with them
+
+# Delete notes (detections) older than N days to bound DB growth (0 = off).
+notes_retention_days: 0
+
+# Event emission (F7): publish each detection as JSON.
+# Empty broker disables the emitter entirely.
+mqtt:
+  broker: ""             # e.g. "tcp://10.0.0.5:1883"
+  topic: birdnet/detections
+  status_topic: birdnet/status   # birth/last-will "online"/"offline" notices
+  client_id: twitcher
+  # username: ""
+  # password: ""
+  qos: 1
+  retain: false

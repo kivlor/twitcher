@@ -62,8 +62,14 @@ Many thanks to the BirdNET-Go authors and, upstream of that, the
 - ✅ **M3 — Persist**: SQLite `notes`/`results` with a BirdNET-Go-compatible schema
   (`internal/store`, modeled on upstream's GORM entities; WAL mode for external readers).
   `cmd/m1` and `cmd/m2` were consolidated into a single `cmd/twitcher` binary.
-- ⬜ **M4 — Harden**: queue-drop, device reconnect backoff, retention sweep, systemd unit,
-  clip recording, MQTT/Kafka event emitter.
+- ✅ **M3 — Persist**: SQLite `notes`/`results` with a BirdNET-Go-compatible schema
+  (`internal/store`, modeled on upstream's GORM entities; WAL mode for external readers).
+  `cmd/m1` and `cmd/m2` were consolidated into a single `cmd/twitcher` binary.
+- ✅ **M4 — Harden**: YAML config with env overrides (`twitcher.example.yaml`),
+  capture-device reconnect with exponential backoff, detection clips with retention
+  sweep (`internal/clips`), MQTT JSON event emitter with birth/LWT status and a
+  bounded, lossy queue (`internal/events`), note retention, and a systemd unit
+  (`deploy/twitcher.service`). Kafka was deferred until there is a consumer.
 - ⬜ **M5 — Pi deployment**: 24 h soak test, swap/zram docs.
 
 ## Building for the Pi 3B
@@ -92,6 +98,25 @@ Detections are written to `-db` (default `twitcher.db`) in BirdNET-Go's
 model](https://github.com/tphakala/birdnet-go/blob/main/internal/datastore/entities/note.go)
 can read the database directly. `-db ""` disables persistence; `-wav file.wav`
 switches to offline classification.
+
+### Configuration, clips, and events
+
+Every setting can come from a YAML config file (`-config twitcher.yaml`, see
+[`twitcher.example.yaml`](twitcher.example.yaml)), command-line flags (which
+override the file), or environment variables
+(`TWITCHER_DB`, `TWITCHER_DEVICE`, `TWITCHER_MQTT_BROKER`). With `-clips`,
+each detection's 3 s audio window is saved as a 48 kHz mono WAV under
+`<clips-dir>/YYYY/MM/DD/` with a JSON provenance sidecar and referenced from
+`notes.clip_name`; `retention-days` prunes old clips (and their notes) hourly.
+With `-mqtt-broker`, every detection is published as a JSON message to
+`birdnet/detections`, and `birdnet/status` carries `online`/`offline`
+(retained, with a last-will for crashes).
+
+### As a service (systemd)
+
+`deploy/twitcher.service` runs twitcher with `Restart=always`, a
+`GOMEMLIMIT` heap cap, and read-only filesystem hardening; installation
+steps are in the unit file comments.
 ```
 
 ## License
