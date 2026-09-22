@@ -55,10 +55,13 @@ Many thanks to the BirdNET-Go authors and, upstream of that, the
 
 ## Status
 
-- ✅ **M1 — Offline classify** (`cmd/m1`): read a WAV, classify each 3 s chunk, print top-3.
-- ✅ **M2 — Stream + detect** (`cmd/m2`): live ALSA capture → chunker with overlap → inference →
+- ✅ **M1 — Offline classify**: read a WAV, classify each 3 s chunk, print top-3
+  (now the `-wav` mode of the single `twitcher` binary).
+- ✅ **M2 — Stream + detect**: live ALSA capture → chunker with overlap → inference →
   log detections above a confidence threshold.
-- ⬜ **M3 — Persist**: SQLite `notes`/`results`, BirdNET-Go-compatible schema.
+- ✅ **M3 — Persist**: SQLite `notes`/`results` with a BirdNET-Go-compatible schema
+  (`internal/store`, modeled on upstream's GORM entities; WAL mode for external readers).
+  `cmd/m1` and `cmd/m2` were consolidated into a single `cmd/twitcher` binary.
 - ⬜ **M4 — Harden**: queue-drop, device reconnect backoff, retention sweep, systemd unit,
   clip recording, MQTT/Kafka event emitter.
 - ⬜ **M5 — Pi deployment**: 24 h soak test, swap/zram docs.
@@ -79,9 +82,16 @@ and the [BirdNET-Go releases](https://github.com/tphakala/birdnet-go/releases) f
 ## Running
 
 ```sh
-LD_LIBRARY_PATH=build/arm64 ./build/arm64/m2 \
+LD_LIBRARY_PATH=build/arm64 ./build/arm64/twitcher \
   -model model.tflite -labels labels.txt -device default \
-  -threshold 0.80 -overlap 0.33
+  -threshold 0.80 -overlap 0.33 -db twitcher.db
+```
+
+Detections are written to `-db` (default `twitcher.db`) in BirdNET-Go's
+`notes`/`results` schema, so tools built for [BirdNET-Go's data
+model](https://github.com/tphakala/birdnet-go/blob/main/internal/datastore/entities/note.go)
+can read the database directly. `-db ""` disables persistence; `-wav file.wav`
+switches to offline classification.
 ```
 
 ## License

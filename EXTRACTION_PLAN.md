@@ -233,8 +233,15 @@ outside inference.
    0.47 s/chunk, 142 MiB peak RSS, no throttling. Artifacts in `build/arm64/`. (Earlier armv7
    32-bit spike in `build/armv7/` + `scripts/m0_cross_tflite.sh` is superseded — kept as
    historical reference only.)
-2. **M2 — Stream + detect:** live ALSA capture → chunker → inference → log detections.
-3. **M3 — Persist:** SQLite `notes`/`results`, BirdNET-Go-compatible schema.
+2. **M2 — Stream + detect:** ✅ **DONE.** live ALSA capture → chunker → inference → log
+   detections. Bounded queues with drop-oldest (N2); flags -threshold/-overlap/-device/-v/-list-devices.
+3. **M3 — Persist:** ✅ **DONE.** SQLite `notes`/`results` via GORM, schema copied from
+   upstream `internal/datastore/entities/{note,results}.go` (WAL + busy_timeout via DSN
+   pragmas like upstream `sqlite.go`). Transactional Save(note, results) mirrors upstream
+   `datastore.SaveNote`. Verified: offline run of tawnyowl.wav persists 6 notes × 3 results;
+   schema/column names match BirdNET-Go exactly; WAL confirmed via external read-only conn.
+   `cmd/m1` + `cmd/m2` consolidated into one `cmd/twitcher` binary (-wav = offline mode;
+   -db default twitcher.db, -lat/-lon/-sensitivity/-node recorded on each note).
 4. **M4 — Harden:** queue-drop, device reconnect backoff, retention sweep, systemd unit,
    SIGHUP re-read config, clip recording, MQTT/Kafka event emitter (F7).
 5. **M5 — Pi deployment:** swap/zram docs, boot-time startup, memory soak test for 24 h.
