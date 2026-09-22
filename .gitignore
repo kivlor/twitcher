@@ -1,0 +1,9 @@
+# Build artifacts and large binaries
+build/
+
+# Cached TFLite source tree (for CGO headers)
+.cache/
+
+# Go
+*.test
+*.out

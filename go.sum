@@ -1,0 +1,4 @@
+github.com/gen2brain/malgo v0.11.26 h1:k5WcPIKw1bbJAbPqrvNPt7nehPLoaPNcOFde2+eruiM=
+github.com/gen2brain/malgo v0.11.26/go.mod h1:xLVG3ROA33Bzol1quF3e4ehqcFuqh8QK4B8T6LQUs/M=
+github.com/tphakala/go-tflite v0.2.2-0.20260514101223-29408e53fff7 h1:fJtEs8rODoFDk8HDRwvNxIYEgsUUrEAvqPdllxF0cmg=
+github.com/tphakala/go-tflite v0.2.2-0.20260514101223-29408e53fff7/go.mod h1:xCgggryHiQ3nD0Sy0oCZESPWmzThLKKB28Vky5m6HCo=
