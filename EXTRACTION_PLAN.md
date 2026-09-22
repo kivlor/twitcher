@@ -255,7 +255,14 @@ outside inference.
    shutdown; MQTT verified against an eclipse-mosquitto broker: birth `online`, 6 detection
    events with top-3 results, clean `offline`. SIGHUP re-read was skipped — flags + env +
    systemd restart cover the same need with less state.
-5. **M5 — Pi deployment:** swap/zram docs, boot-time startup, memory soak test for 24 h.
+5. **M5 — Pi deployment:** ✅ DONE (deployment portion). Cross-compiled arm64 binary,
+   installed on Raspberry Pi 3B (Debian 13) with systemd unit (enabled, Restart=always);
+   config at `/etc/twitcher/twitcher.yaml`, data at `/var/lib/twitcher` (SQLite + clips,
+   30-day retention), MQTT to `tcp://dynames.local:1883`, lat/lon set. Verified live:
+   USB mic capture at 48 kHz, detections in real time at ~0.5 s/chunk, RSS ~116 MiB,
+   broker receiving events. Mic gain forced to 100% at service start via `ExecStartPre`
+   (USB card re-enumerates and gain resets on reboot). Remaining: 24 h soak
+   (RSS stability, DB growth, detection plausibility) and swap/zram docs.
 
 ### 5.5 Verification
 
